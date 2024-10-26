@@ -3,126 +3,126 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Contador con Registro de Inicios y Pausas</title>
+  <title>Contador con Firebase</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      margin: 0;
-      background-color: #f4f4f4;
-    }
-    .contador {
-      font-size: 48px;
-      margin-bottom: 10px;
-    }
-    .botones {
-      margin-bottom: 10px;
+      text-align: center;
+      margin-top: 100px;
     }
     button {
       margin: 5px;
       padding: 10px 20px;
       font-size: 16px;
-      cursor: pointer;
     }
-    .registro {
-      margin-top: 20px;
-      width: 80%;
-      max-width: 500px;
-      overflow-y: auto;
-      max-height: 200px;
-      background-color: #fff;
-      border-radius: 5px;
-      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-      padding: 10px;
-    }
-    .registro div {
-      margin: 5px 0;
-      padding: 8px;
-      background-color: #e7e7e7;
-      border-radius: 5px;
+    ul {
+      list-style-type: none;
+      padding: 0;
     }
   </style>
-</head>
-<body>
-  <div class="contador" id="contador">0</div>
-  
-  <div class="botones">
-    <button id="iniciarPausarBtn">Iniciar</button>
-    <button id="resetBtn">Resetear</button>
-  </div>
+  <script type="module">
+    // Importar Firebase y Firestore desde los módulos
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
 
-  <div class="registro" id="registro"></div>
+    // Configuración de Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyDD9dZfei-Rp0qGpdauqLPOT9m_GrkFZM4",
+      authDomain: "peton-b68c8.firebaseapp.com",
+      projectId: "peton-b68c8",
+      storageBucket: "peton-b68c8.appspot.com",
+      messagingSenderId: "746059582109",
+      appId: "1:746059582109:web:da5ae04ca329c52b602274",
+      measurementId: "G-0JZF9HLB97"
+    };
 
-  <script>
+    // Inicializar Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // Referencia a la colección de "contadores"
+    const contadoresRef = collection(db, "contadores");
+
     let contador = 0;
-    let intervalo = null;
-    let registro = JSON.parse(localStorage.getItem('registro')) || [];
-    let contando = false;
 
-    const contadorElem = document.getElementById('contador');
-    const iniciarPausarBtn = document.getElementById('iniciarPausarBtn');
-    const resetBtn = document.getElementById('resetBtn');
-    const registroElem = document.getElementById('registro');
+    // Función para actualizar la interfaz
+    const actualizarInterfaz = () => {
+      document.getElementById('contador').textContent = `Contador: ${contador}`;
+    };
 
-    // Función para actualizar el contador en pantalla
-    function actualizarContador() {
-      contadorElem.textContent = contador;
-    }
+    // Función para guardar un evento (inicio o pausa)
+    const registrarEvento = async (tipo) => {
+      try {
+        await addDoc(contadoresRef, {
+          tipo: tipo,
+          timestamp: new Date()
+        });
+        console.log(`${tipo} registrado en Firestore.`);
+      } catch (e) {
+        console.error("Error al guardar en Firestore: ", e);
+      }
+    };
 
-    // Función para agregar un registro
-    function agregarRegistro(mensaje) {
-      const registroItem = { mensaje, timestamp: new Date().toLocaleString() };
-      registro.push(registroItem);
-      localStorage.setItem('registro', JSON.stringify(registro));
-      mostrarRegistro();
-    }
-
-    // Función para mostrar el registro en pantalla
-    function mostrarRegistro() {
-      registroElem.innerHTML = '';
-      registro.forEach(item => {
-        const div = document.createElement('div');
-        div.textContent = `${item.mensaje} - ${item.timestamp}`;
-        registroElem.appendChild(div);
-      });
-    }
-
-    // Evento para iniciar o pausar el contador
-    iniciarPausarBtn.addEventListener('click', () => {
-      if (contando) {
-        clearInterval(intervalo);
-        agregarRegistro('Pausado');
-        iniciarPausarBtn.textContent = 'Iniciar';
-      } else {
-        agregarRegistro('Iniciado');
+    // Función para iniciar el contador
+    let intervalo;
+    const iniciarContador = () => {
+      if (!intervalo) {
         intervalo = setInterval(() => {
           contador++;
-          actualizarContador();
+          actualizarInterfaz();
         }, 1000);
-        iniciarPausarBtn.textContent = 'Pausar';
+        registrarEvento("Inicio");
       }
-      contando = !contando;
-    });
+    };
 
-    // Evento para resetear el contador y el registro
-    resetBtn.addEventListener('click', () => {
-      clearInterval(intervalo);
+    // Función para pausar el contador
+    const pausarContador = () => {
+      if (intervalo) {
+        clearInterval(intervalo);
+        intervalo = null;
+        registrarEvento("Pausa");
+      }
+    };
+
+    // Función para reiniciar el contador
+    const reiniciarContador = () => {
       contador = 0;
-      contando = false;
-      iniciarPausarBtn.textContent = 'Iniciar';
-      registro = [];
-      localStorage.removeItem('registro');
-      actualizarContador();
-      mostrarRegistro();
+      actualizarInterfaz();
+      registrarEvento("Reinicio");
+    };
+
+    // Función para mostrar todos los eventos guardados
+    const mostrarEventos = async () => {
+      const querySnapshot = await getDocs(contadoresRef);
+      const lista = document.getElementById('eventos');
+      lista.innerHTML = ''; // Limpiar lista
+
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        const item = document.createElement('li');
+        item.textContent = `${data.tipo} - ${data.timestamp.toDate()}`;
+        lista.appendChild(item);
+      });
+    };
+
+    // Escuchar cambios en tiempo real en la colección
+    onSnapshot(contadoresRef, (snapshot) => {
+      console.log("Datos actualizados");
+      mostrarEventos();
     });
 
-    // Cargar el registro al abrir la página
-    mostrarRegistro();
-    actualizarContador();
+    // Actualizar la interfaz al cargar la página
+    actualizarInterfaz();
   </script>
+</head>
+<body>
+  <h1>Contador con Firebase</h1>
+  <p id="contador">Contador: 0</p>
+  <button onclick="iniciarContador()">Iniciar</button>
+  <button onclick="pausarContador()">Pausar</button>
+  <button onclick="reiniciarContador()">Reiniciar</button>
+
+  <h2>Historial de Eventos</h2>
+  <ul id="eventos"></ul>
 </body>
 </html>

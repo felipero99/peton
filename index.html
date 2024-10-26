@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contador con Registro de Inicios y Pausas</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+      background-color: #f4f4f4;
+    }
+    .contador {
+      font-size: 48px;
+      margin-bottom: 10px;
+    }
+    .botones {
+      margin-bottom: 10px;
+    }
+    button {
+      margin: 5px;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .registro {
+      margin-top: 20px;
+      width: 80%;
+      max-width: 500px;
+      overflow-y: auto;
+      max-height: 200px;
+      background-color: #fff;
+      border-radius: 5px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      padding: 10px;
+    }
+    .registro div {
+      margin: 5px 0;
+      padding: 8px;
+      background-color: #e7e7e7;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="contador" id="contador">0</div>
+  
+  <div class="botones">
+    <button id="iniciarPausarBtn">Iniciar</button>
+    <button id="resetBtn">Resetear</button>
+  </div>
+
+  <div class="registro" id="registro"></div>
+
+  <script>
+    let contador = 0;
+    let intervalo = null;
+    let registro = JSON.parse(localStorage.getItem('registro')) || [];
+    let contando = false;
+
+    const contadorElem = document.getElementById('contador');
+    const iniciarPausarBtn = document.getElementById('iniciarPausarBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const registroElem = document.getElementById('registro');
+
+    // Función para actualizar el contador en pantalla
+    function actualizarContador() {
+      contadorElem.textContent = contador;
+    }
+
+    // Función para agregar un registro
+    function agregarRegistro(mensaje) {
+      const registroItem = { mensaje, timestamp: new Date().toLocaleString() };
+      registro.push(registroItem);
+      localStorage.setItem('registro', JSON.stringify(registro));
+      mostrarRegistro();
+    }
+
+    // Función para mostrar el registro en pantalla
+    function mostrarRegistro() {
+      registroElem.innerHTML = '';
+      registro.forEach(item => {
+        const div = document.createElement('div');
+        div.textContent = `${item.mensaje} - ${item.timestamp}`;
+        registroElem.appendChild(div);
+      });
+    }
+
+    // Evento para iniciar o pausar el contador
+    iniciarPausarBtn.addEventListener('click', () => {
+      if (contando) {
+        clearInterval(intervalo);
+        agregarRegistro('Pausado');
+        iniciarPausarBtn.textContent = 'Iniciar';
+      } else {
+        agregarRegistro('Iniciado');
+        intervalo = setInterval(() => {
+          contador++;
+          actualizarContador();
+        }, 1000);
+        iniciarPausarBtn.textContent = 'Pausar';
+      }
+      contando = !contando;
+    });
+
+    // Evento para resetear el contador y el registro
+    resetBtn.addEventListener('click', () => {
+      clearInterval(intervalo);
+      contador = 0;
+      contando = false;
+      iniciarPausarBtn.textContent = 'Iniciar';
+      registro = [];
+      localStorage.removeItem('registro');
+      actualizarContador();
+      mostrarRegistro();
+    });
+
+    // Cargar el registro al abrir la página
+    mostrarRegistro();
+    actualizarContador();
+  </script>
+</body>
+</html>
